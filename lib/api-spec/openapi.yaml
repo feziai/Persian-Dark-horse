@@ -1,0 +1,2084 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: agents
+    description: FEZI AI agent catalog
+  - name: dashboard
+    description: Workspace dashboard
+  - name: chat
+    description: Agent conversations
+  - name: projects
+    description: Workspace project organization
+  - name: voice
+    description: Speech synthesis for agent responses
+  - name: media
+    description: Media provider capabilities and model catalog
+  - name: billing
+    description: Plans and crypto payment estimates
+  - name: connectors
+    description: External MCP connector management
+  - name: agent-access
+    description: External access to FEZI Agents
+  - name: custom-agents
+    description: Persistent Agent Builder and community Agents
+  - name: prompt-studio
+    description: Public community prompts and examples
+paths:
+  /payments/redeem-codes:
+    get:
+      operationId: listRedeemCodeOrders
+      parameters:
+        - in: query
+          name: before
+          schema: { type: string }
+      responses:
+        "200":
+          description: Authenticated buyer purchase history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedeemCodeHistory"
+  /payments/redeem-codes/orders:
+    post:
+      operationId: createRedeemCodeOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedeemCodePurchaseInput"
+      responses:
+        "201":
+          description: Unique exact stablecoin transfer amount reserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedeemCodeOrderResult"
+  /payments/redeem-codes/orders/{id}/verify:
+    post:
+      operationId: verifyRedeemCodeOrder
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedeemCodeVerificationInput"
+      responses:
+        "200":
+          description: Verified or pending order; codes are issued only after finality
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedeemCodeOrderResult"
+  /payments/redeem-codes/redeem:
+    post:
+      operationId: redeemPurchasedCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchasedCodeInput"
+      responses:
+        "200":
+          description: One-time account credit award (not subscription or API access)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchasedCodeResult"
+  /site-api-keys:
+    get:
+      operationId: listSiteApiKeys
+      responses:
+        "200":
+          description: Signed-in owner's active Site API keys and current shared balance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SiteApiKeyList" }
+    post:
+      operationId: createSiteApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SiteApiKeyInput" }
+      responses:
+        "201":
+          description: Created key; plaintext is displayed once and never listed again
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SiteApiKeyCreated" }
+  /site-api-keys/{id}:
+    patch:
+      operationId: updateSiteApiKey
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SiteApiKeyUpdate" }
+      responses:
+        "200":
+          description: Updated owner-scoped key metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SiteApiKeyUpdated" }
+    delete:
+      operationId: revokeSiteApiKey
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Key revoked and cannot be used again }
+  /payments/admin-codes/redeem:
+    post:
+      operationId: redeemAdminGiftCode
+      tags: [billing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCodeRedeemInput" }
+      responses:
+        "200":
+          description: Credit or membership code redeemed once by an authenticated user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCodeRedeemResult" }
+  /admin/ai/ask:
+    post:
+      operationId: askAdminAiQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminAiQuestionInput" }
+      responses:
+        "200":
+          description: Answer from the selected GAPGPT model, admin session required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAiAnswer" }
+  /admin/codes:
+    get:
+      operationId: listAdminCodes
+      responses:
+        "200":
+          description: Codes and redemption counts, admin session required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCodeList" }
+    post:
+      operationId: createAdminCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCodeInput" }
+      responses:
+        "201":
+          description: Created code, admin session required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCodeResponse" }
+  /admin/codes/{id}:
+    patch:
+      operationId: setAdminCodeActive
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCodeActiveInput" }
+      responses:
+        "200":
+          description: Updated code, admin session required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCodeResponse" }
+  /community/posts:
+    $ref: './community.yaml#/paths/~1community~1posts'
+  /community/posts/{id}:
+    $ref: './community.yaml#/paths/~1community~1posts~1{id}'
+  /community/posts/{id}/like:
+    $ref: './community.yaml#/paths/~1community~1posts~1{id}~1like'
+  /community/uploads:
+    $ref: './community.yaml#/paths/~1community~1uploads'
+  /community/profiles/{id}:
+    $ref: './community.yaml#/paths/~1community~1profiles~1{id}'
+  /community/profile:
+    $ref: './community.yaml#/paths/~1community~1profile'
+  /community/profiles/{id}/follow:
+    $ref: './community.yaml#/paths/~1community~1profiles~1{id}~1follow'
+  /community/profiles/{id}/block:
+    $ref: './community.yaml#/paths/~1community~1profiles~1{id}~1block'
+  /community/reports:
+    $ref: './community.yaml#/paths/~1community~1reports'
+  /community/notifications:
+    $ref: './community.yaml#/paths/~1community~1notifications'
+  /community/notifications/read:
+    $ref: './community.yaml#/paths/~1community~1notifications~1read'
+  /community/conversations:
+    $ref: './community.yaml#/paths/~1community~1conversations'
+  /community/messages/{userId}:
+    $ref: './community.yaml#/paths/~1community~1messages~1{userId}'
+  /community/banners:
+    $ref: './community.yaml#/paths/~1community~1banners'
+  /community/visit:
+    $ref: './community.yaml#/paths/~1community~1visit'
+  /community/data:
+    $ref: './community.yaml#/paths/~1community~1data'
+  /admin/community:
+    $ref: './community.yaml#/paths/~1admin~1community'
+  /admin/community/banners:
+    $ref: './community.yaml#/paths/~1admin~1community~1banners'
+  /admin/community/uploads:
+    $ref: './community.yaml#/paths/~1admin~1community~1uploads'
+  /admin/community/news:
+    $ref: './community.yaml#/paths/~1admin~1community~1news'
+  /admin/community/reports/{id}:
+    $ref: './community.yaml#/paths/~1admin~1community~1reports~1{id}'
+  /admin/community/posts/{id}:
+    $ref: './community.yaml#/paths/~1admin~1community~1posts~1{id}'
+  /admin/community/analytics:
+    $ref: './community.yaml#/paths/~1admin~1community~1analytics'
+  /admin/community/news/sync:
+    $ref: './community.yaml#/paths/~1admin~1community~1news~1sync'
+  /gemini/image:
+    post:
+      operationId: generateGeminiImage
+      tags: [media]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GeminiImageInput" }
+      responses:
+        "200": { description: Generated image, content: { application/json: { schema: { $ref: "#/components/schemas/GeminiImageResponse" } } } }
+  /gemini/image-to-prompt:
+    post:
+      operationId: analyzeImageToPrompt
+      tags: [media]
+      summary: Analyze a reference image and return an editable prompt package
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImageToPromptInput" }
+      responses:
+        "200": { description: Structured image analysis and prompts, content: { application/json: { schema: { $ref: "#/components/schemas/ImageToPromptResponse" } } } }
+        "400": { description: Unsupported image or invalid request }
+        "402": { description: Subscription or Credits required }
+        "502": { description: Vision analysis failed or returned an invalid prompt package }
+  /prompt-studio/generate:
+    post:
+      operationId: generatePromptStudioPrompt
+      tags: [prompt-studio]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromptStudioGenerateInput" }
+      responses:
+        "200": { description: Generated prompt, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioGenerateResponse" } } } }
+  /prompt-studio/prompts:
+    get:
+      operationId: listPromptStudioPrompts
+      tags: [prompt-studio]
+      parameters:
+        - { name: category, in: query, schema: { type: string } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [trending, newest, top-rated, relevant, popular] } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200": { description: Prompt summaries, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioList" } } } }
+    post:
+      operationId: createPromptStudioPrompt
+      tags: [prompt-studio]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioPromptInput" } } } }
+      responses:
+        "201": { description: Created prompt, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioPromptResponse" } } } }
+  /prompt-studio/prompts/{id}:
+    get:
+      operationId: getPromptStudioPrompt
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Prompt detail, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioDetailResponse" } } } }
+    delete:
+      operationId: deletePromptStudioPrompt
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
+  /prompt-studio/prompts/{id}/unlock:
+    post:
+      operationId: unlockPromptStudioPrompt
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromptStudioUnlockInput" }
+      responses:
+        "200": { description: Prompt text unlocked, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioUnlockResponse" } } } }
+        "400": { description: Invalid action }
+        "401": { description: Authentication required }
+        "402": { description: Insufficient credits or free unlock limit reached }
+        "404": { description: Prompt not found }
+  /prompt-studio/prompts/{id}/rating:
+    put:
+      operationId: ratePromptStudioPrompt
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromptStudioRatingInput" }
+      responses:
+        "200": { description: Rating saved, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioRatingResponse" } } } }
+        "400": { description: Rating must be from 1 to 5 }
+        "404": { description: Prompt not found }
+  /prompt-studio/prompts/{id}/images:
+    post:
+      operationId: uploadPromptStudioImage
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          image/jpeg: { schema: { type: string, format: binary } }
+          image/png: { schema: { type: string, format: binary } }
+          image/webp: { schema: { type: string, format: binary } }
+      responses: { "201": { description: Uploaded image, content: { application/json: { schema: { type: object } } } } }
+  /prompt-studio/prompts/{promptId}/images/{imageId}:
+    delete:
+      operationId: deletePromptStudioImage
+      tags: [prompt-studio]
+      parameters:
+        - { name: promptId, in: path, required: true, schema: { type: string } }
+        - { name: imageId, in: path, required: true, schema: { type: string } }
+      responses: { "204": { description: Deleted } }
+  /prompt-studio/profiles/{publicId}:
+    get:
+      operationId: getPromptStudioProfile
+      tags: [prompt-studio]
+      parameters: [{ name: publicId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Public profile, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioProfileResponse" } } } }
+  /prompt-studio/prompts/{id}/comments:
+    post:
+      operationId: createPromptStudioComment
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PromptStudioCommentInput" } } } }
+      responses:
+        "201": { description: Created comment, content: { application/json: { schema: { type: object } } } }
+  /prompt-studio/comments/{id}:
+    delete:
+      operationId: deletePromptStudioComment
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
+  /prompt-studio/images/{id}:
+    get:
+      operationId: getPromptStudioImage
+      tags: [prompt-studio]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: Image bytes, content: { image/webp: { schema: { type: string, format: binary } } } } }
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /gapgpt/status:
+    get:
+      operationId: getGapGptStatus
+      tags: [media]
+      summary: Check GapGPT capability availability and model catalog
+      responses:
+        "200":
+          description: GapGPT provider status without exposing credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [configured, reachable, catalog]
+                properties:
+                  configured: { type: boolean }
+                  reachable: { type: boolean }
+                  baseUrl: { type: string }
+                  status: { type: integer }
+                  models:
+                    type: array
+                    items: { type: string }
+                  catalog:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, category, inputPrice, unit, requiresSubscription, expensive]
+                      properties:
+                        id: { type: string }
+                        category: { type: string }
+                        inputPrice: { type: number }
+                        outputPrice: { type: number, nullable: true }
+                        unit: { type: string }
+                        requiresSubscription: { type: boolean }
+                        expensive: { type: boolean }
+                        live: { type: boolean }
+                  capabilities:
+                    type: object
+                    additionalProperties: { type: boolean }
+  /agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List available AI agents
+      responses:
+        "200":
+          description: Agent catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agent"
+  /custom-agents:
+    get:
+      operationId: listCustomAgents
+      tags: [custom-agents]
+      summary: List custom Agents owned by the current workspace
+      responses:
+        "200":
+          description: Custom Agent list and plan quota
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomAgentsResponse"
+    post:
+      operationId: createCustomAgent
+      tags: [custom-agents]
+      summary: Create a persistent custom Agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomAgentInput"
+      responses:
+        "201":
+          description: Created custom Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent, limit, used]
+                properties:
+                  agent: { $ref: "#/components/schemas/CustomAgent" }
+                  limit: { type: integer }
+                  used: { type: integer }
+        "402":
+          description: Custom Agent quota reached
+  /custom-agents/discover:
+    get:
+      operationId: discoverCustomAgents
+      tags: [custom-agents]
+      summary: List public community Agents
+      responses:
+        "200":
+          description: Public custom Agents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agents]
+                properties:
+                  agents:
+                    type: array
+                    items: { $ref: "#/components/schemas/CustomAgent" }
+  /custom-agents/analyze:
+    post:
+      operationId: analyzeCustomAgentPurpose
+      tags: [custom-agents]
+      summary: Detect a starting configuration from a natural-language purpose
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomAgentPurposeAnalysisInput" }
+      responses:
+        "200":
+          description: Suggested Agent configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [detected, suggestedCapabilities, suggestedTools, suggestedInstructions]
+                properties:
+                  detected:
+                    type: array
+                    items:
+                      type: object
+                      required: [label, capabilityId]
+                      properties:
+                        label: { type: string }
+                        capabilityId: { type: string }
+                  suggestedCapabilities:
+                    type: array
+                    items: { type: string }
+                  suggestedTools:
+                    type: array
+                    items: { type: string }
+                  suggestedInstructions: { type: string }
+  /custom-agents/{agentId}:
+    get:
+      operationId: getCustomAgent
+      tags: [custom-agents]
+      summary: Get an owned custom Agent including private builder configuration
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Custom Agent configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent]
+                properties:
+                  agent:
+                    allOf:
+                      - $ref: "#/components/schemas/CustomAgent"
+                      - type: object
+                        properties:
+                          systemInstructions: { type: string }
+                          developerInstructions: { type: string }
+                          knowledgeText: { type: string }
+    patch:
+      operationId: updateCustomAgent
+      tags: [custom-agents]
+      summary: Update an owned custom Agent
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomAgentInput"
+      responses:
+        "200":
+          description: Updated custom Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent]
+                properties:
+                  agent: { $ref: "#/components/schemas/CustomAgent" }
+    delete:
+      operationId: deleteCustomAgent
+      tags: [custom-agents]
+      summary: Delete an owned custom Agent and its API keys
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Custom Agent deleted }
+  /custom-agents/{agentId}/api-keys:
+    get:
+      operationId: listCustomAgentApiKeys
+      tags: [custom-agents]
+      summary: List safe API key metadata
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: API key metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items: { $ref: "#/components/schemas/CustomAgentApiKey" }
+    post:
+      operationId: createCustomAgentApiKey
+      tags: [custom-agents]
+      summary: Create a one-time-display API key
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: API key shown once
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [key, apiKey, endpoint, warning]
+                properties:
+                  key: { $ref: "#/components/schemas/CustomAgentApiKey" }
+                  apiKey: { type: string }
+                  endpoint: { type: string }
+                  warning: { type: string }
+  /custom-agents/{agentId}/api-keys/{keyId}:
+    delete:
+      operationId: revokeCustomAgentApiKey
+      tags: [custom-agents]
+      summary: Revoke a custom Agent API key
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: API key revoked }
+  /custom-agents/{agentId}/chat:
+    post:
+      operationId: customAgentApiChat
+      tags: [custom-agents]
+      summary: Chat with a published custom Agent using its API key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomAgentApiChatInput" }
+      responses:
+        "200":
+          description: Custom Agent response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "401": { description: Invalid or revoked API key }
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get the current workspace dashboard
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /chat:
+    post:
+      operationId: sendChat
+      tags: [chat]
+      summary: Send a message to an AI agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatInput"
+      responses:
+        "200":
+          description: Agent response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+  /chat/media/{messageId}:
+    get:
+      operationId: getChatMedia
+      tags: [chat]
+      summary: Stream protected generated media belonging to a chat message
+      parameters:
+        - in: path
+          name: messageId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Generated image or MP4 video
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+            video/mp4:
+              schema: { type: string, format: binary }
+        "404":
+          description: Chat media not found or inaccessible
+  /chat/history:
+    get:
+      operationId: getChatHistory
+      tags: [chat]
+      summary: Get the latest saved conversation for an Agent
+      parameters:
+        - name: agentId
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: appId
+          in: query
+          required: false
+          schema: { type: string, enum: [claude, deepseek, gapgpt, openai, mistral] }
+        - name: conversationId
+          in: query
+          required: false
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: Latest conversation and its messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatHistory"
+  /chat/conversations:
+    get:
+      operationId: listChatConversations
+      tags: [chat]
+      summary: List saved conversations
+      responses:
+        "200":
+          description: Saved conversations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatConversationsResponse"
+    post:
+      operationId: createChatConversation
+      tags: [chat]
+      summary: Start a new saved conversation for an Agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatConversationInput"
+      responses:
+        "201":
+          description: New empty conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatHistory"
+  /chat/conversations/{conversationId}:
+    patch:
+      operationId: renameChatConversation
+      tags: [chat]
+      summary: Rename an owned conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationRename"
+      responses:
+        "200":
+          description: Renamed conversation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversation]
+                properties:
+                  conversation: { $ref: "#/components/schemas/ChatConversationSummary" }
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List workspace projects
+      responses:
+        "200":
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projects]
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: "#/components/schemas/Project" }
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a workspace project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectInput" }
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [project]
+                properties:
+                  project: { $ref: "#/components/schemas/Project" }
+  /projects/{projectId}:
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a workspace project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectUpdate" }
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [project]
+                properties:
+                  project: { $ref: "#/components/schemas/Project" }
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a workspace project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Deleted }
+  /voice/speech:
+    post:
+      operationId: synthesizeSpeech
+      tags: [voice]
+      summary: Convert an agent response to speech
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpeechInput"
+      responses:
+        "200":
+          description: Synthesized speech audio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpeechAudio"
+  /voice/transcription:
+    post:
+      operationId: transcribeVoice
+      tags: [voice]
+      summary: Transcribe a recorded voice message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoiceInput"
+      responses:
+        "200":
+          description: Voice transcription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceTranscription"
+  /plans:
+    get:
+      operationId: listPlans
+      tags: [billing]
+      summary: List subscription plans
+      responses:
+        "200":
+          description: Subscription plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Plan"
+  /currencies:
+    get:
+      operationId: listPaymentCurrencies
+      tags: [billing]
+      summary: List enabled crypto payment currencies and wallet destinations
+      responses:
+        "200":
+          description: Payment currency catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentCurrency"
+  /payments/quote:
+    post:
+      operationId: getPaymentQuote
+      tags: [billing]
+      summary: Calculate a crypto payment quote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentQuoteInput"
+      responses:
+        "200":
+          description: Payment quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentQuote"
+  /connectors:
+    get:
+      operationId: getConnectors
+      tags: [connectors]
+      summary: List connector catalog and workspace connections
+      responses:
+        "200":
+          description: Connector catalog and active connections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorsResponse"
+    post:
+      operationId: createConnector
+      tags: [connectors]
+      summary: Connect a custom MCP server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConnectorInput"
+      responses:
+        "201":
+          description: MCP server connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorConnection"
+        "400":
+          description: Invalid URL or unavailable MCP server
+  /connectors/{connectionId}/permissions:
+    patch:
+      operationId: updateConnectorPermissions
+      tags: [connectors]
+      summary: Grant connector tools to specific Agents
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorPermissionsInput"
+      responses:
+        "200":
+          description: Updated connection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorConnection"
+  /connectors/{connectionId}:
+    delete:
+      operationId: revokeConnector
+      tags: [connectors]
+      summary: Revoke a connector
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Connector revoked
+  /connectors/notion/authorize:
+    post:
+      operationId: authorizeNotion
+      tags: [connectors]
+      summary: Start Notion OAuth authorization
+      responses:
+        "200":
+          description: Authorization redirect or setup state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorizationResponse"
+  /agent/v1/chat:
+    post:
+      operationId: externalAgentChat
+      tags: [agent-access]
+      summary: Send a message to the Agent represented by a FEZI API key
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalChatInput"
+      responses:
+        "200":
+          description: Agent response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "401":
+          description: Invalid API key
+  /mcp:
+    post:
+      operationId: mcpRpc
+      tags: [agent-access]
+      summary: FEZI Site API Streamable HTTP MCP endpoint
+      description: |
+        Stateless MCP JSON-RPC 2.0 over POST. Send `Content-Type: application/json`
+        and `Accept: application/json, text/event-stream`. Initialize and ping
+        are public. Private tool listing and tool calls require an existing
+        FEZI Site API key in `Authorization: Bearer <SITE_API_KEY>`. Supported
+        tools are `fezi_site_models` and `fezi_site_chat`; generation retains the
+        key's Agent/model scope, rate limits, and API Credit balance. No API key
+        is accepted in a URL or query parameter.
+
+        Initialize with protocol version `2025-03-26`, then send
+        `notifications/initialized`. Example endpoint:
+        `https://persiandarkhorse.com/api/mcp`.
+
+        Example authorized request (provide the key via your client's secure
+        secret store):
+
+        ```sh
+        curl -X POST 'https://persiandarkhorse.com/api/mcp' \
+          -H "Authorization: Bearer ${FEZI_SITE_API_KEY}" \
+          -H 'Content-Type: application/json' \
+          -H 'Accept: application/json, text/event-stream' \
+          --data '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+        ```
+
+        To generate, call `tools/call` with
+        `{"name":"fezi_site_chat","arguments":{"message":"Hello"}}`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/McpRequest"
+      responses:
+        "200":
+          description: JSON-RPC response; notification-only requests return 202 without a body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpResponse"
+        "202": { description: Notification accepted without a response body }
+        "400": { description: "Invalid JSON-RPC request, unsupported protocol version, or forbidden query parameter" }
+        "401": { description: "Missing, invalid, or revoked FEZI Site API key for a private method" }
+        "406": { description: Accept must include application/json and text/event-stream }
+        "413": { description: Request body exceeds the 64 KB limit }
+        "415": { description: Content-Type must be application/json }
+        "429": { description: Site API rate limit exceeded }
+    get:
+      operationId: getFeziStreamableMcp
+      tags: [agent-access]
+      summary: Unsupported stateless MCP event stream
+      responses:
+        "405": { description: This stateless endpoint does not open server-sent event streams }
+    delete:
+      operationId: deleteFeziStreamableMcpSession
+      tags: [agent-access]
+      summary: Gracefully terminate an MCP session
+      responses:
+        "204": { description: No session state is retained }
+components:
+  schemas:
+    SiteApiKeyRecord:
+      type: object
+      required: [id, name, lastFour, creditLimit, creditsUsed, createdAt, lastUsedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        lastFour: { type: string }
+        creditLimit: { type: [integer, "null"], description: "Total lifetime key allowance; null uses only the shared wallet." }
+        creditsUsed: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, "null"], format: date-time }
+    SiteApiKeyList:
+      type: object
+      required: [keys, balance]
+      properties:
+        keys: { type: array, items: { $ref: "#/components/schemas/SiteApiKeyRecord" } }
+        balance: { type: integer, minimum: 0 }
+    SiteApiKeyInput:
+      type: object
+      required: [name, creditLimit]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        creditLimit: { type: [integer, "null"], minimum: 0 }
+    SiteApiKeyUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        creditLimit: { type: [integer, "null"], minimum: 0 }
+    SiteApiKeyUpdated:
+      type: object
+      required: [record]
+      properties:
+        record: { $ref: "#/components/schemas/SiteApiKeyRecord" }
+    SiteApiKeyCreated:
+      type: object
+      required: [key, record]
+      properties:
+        key: { type: string, description: "Plaintext shown once; never persisted or listed." }
+        record: { $ref: "#/components/schemas/SiteApiKeyRecord" }
+    AdminAiQuestionInput:
+      type: object
+      required: [model, question]
+      properties:
+        model: { type: string, enum: [chatgpt, claude, gemini] }
+        question: { type: string, minLength: 1, maxLength: 10000 }
+    AdminAiAnswer:
+      type: object
+      required: [model, answer]
+      properties:
+        model: { type: string, enum: [chatgpt, claude, gemini] }
+        answer: { type: string }
+    AdminCodeInput:
+      type: object
+      required: [kind, value, maxUses]
+      properties:
+        kind: { type: string, enum: [discount, credits, membership] }
+        code: { type: string, minLength: 4, maxLength: 64 }
+        value: { type: integer, minimum: 1 }
+        planId: { type: string }
+        maxUses: { type: integer, minimum: 1, maximum: 1000000 }
+    AdminCode:
+      type: object
+      required: [id, code, kind, value, planId, maxUses, usedCount, active, createdAt]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        kind: { type: string, enum: [discount, credits, membership] }
+        value: { type: integer }
+        planId: { type: [string, "null"] }
+        maxUses: { type: integer }
+        usedCount: { type: integer }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    AdminCodeList:
+      type: object
+      required: [codes]
+      properties:
+        codes: { type: array, items: { $ref: "#/components/schemas/AdminCode" } }
+    AdminCodeResponse:
+      type: object
+      required: [code]
+      properties:
+        code: { $ref: "#/components/schemas/AdminCode" }
+    AdminCodeActiveInput:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+    AdminCodeRedeemInput:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, minLength: 4, maxLength: 64 }
+    AdminCodeRedeemResult:
+      type: object
+      required: [kind, value]
+      properties:
+        kind: { type: string, enum: [credits, membership] }
+        value: { type: integer }
+        planId: { type: [string, "null"] }
+        credits: { type: integer }
+        creditsLimit: { type: integer }
+        expiresAt: { type: string, format: date-time }
+    McpResponse:
+      type: object
+      additionalProperties: true
+    RedeemCodePurchaseInput:
+      type: object
+      required: [amountUsd, currency]
+      properties:
+        amountUsd: { type: string, pattern: '^(0|[1-9]\d*)(\.\d{1,2})?$', maxLength: 20 }
+        currency: { type: string }
+    RedeemCodeVerificationInput:
+      type: object
+      required: [txId]
+      properties:
+        txId: { type: string, maxLength: 66 }
+    PurchasedCodeInput:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, maxLength: 80 }
+    PurchasedCodeResult:
+      type: object
+      required: [creditsAdded, credits, creditsLimit]
+      properties:
+        creditsAdded: { type: number }
+        credits: { type: number }
+        creditsLimit: { type: number }
+    RedeemCodeCurrency:
+      type: object
+      required: [id, label, ticker, network, address]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        ticker: { type: string }
+        network: { type: string }
+        address: { type: string }
+    RedeemCodeOrder:
+      type: object
+      required: [id, amountUsd, credits, currency, currencyLabel, network, address, cryptoAmount, status, code, createdAt, redeemedAt, txId]
+      properties:
+        id: { type: string }
+        amountUsd: { type: number }
+        credits: { type: number }
+        currency: { type: string }
+        currencyLabel: { type: string }
+        network: { type: string }
+        address: { type: string }
+        cryptoAmount: { type: string }
+        status: { type: string, enum: [awaiting_payment, pending, issued, redeemed] }
+        code: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        redeemedAt: { type: [string, "null"], format: date-time }
+        txId: { type: [string, "null"] }
+        verificationMessage: { type: string }
+    RedeemCodeOrderResult:
+      type: object
+      required: [order]
+      properties:
+        order:
+          $ref: "#/components/schemas/RedeemCodeOrder"
+    RedeemCodeHistory:
+      type: object
+      required: [orders, currencies, minAmountUsd, creditsPerDollar]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/RedeemCodeOrder"
+        currencies:
+          type: array
+          items:
+            $ref: "#/components/schemas/RedeemCodeCurrency"
+        minAmountUsd: { type: number }
+        creditsPerDollar: { type: number }
+        nextCursor: { type: [string, "null"] }
+    GeminiImageInput:
+      type: object
+      required: [prompt, agentId]
+      properties:
+        prompt: { type: string, minLength: 3, maxLength: 4000 }
+        agentId: { type: string }
+        toolId: { type: string }
+        model: { type: string }
+        promptStudioId: { type: string, description: "Optional valid Prompt Studio ID; publication only occurs when prompt contains its canonical text." }
+    GeminiImageResponse:
+      type: object
+      required: [imageBase64, mimeType, creditsUsed]
+      properties:
+        imageBase64: { type: string }
+        mimeType: { type: string }
+        model: { type: string }
+        creditsUsed: { type: integer }
+        publishedImage: { type: ["object", "null"] }
+        publicationError: { type: ["string", "null"] }
+    PromptStudioGenerateInput:
+      type: object
+      required: [kind, brief, language]
+      properties:
+        kind: { type: string, enum: [image, video] }
+        brief: { type: string, minLength: 3, maxLength: 4000 }
+        model: { type: string, maxLength: 120 }
+        websiteUrl: { type: string, format: uri, maxLength: 1000 }
+        language: { type: string, enum: [fa, en] }
+        durationSeconds: { type: integer, minimum: 4, maximum: 60 }
+    PromptStudioGenerateResponse:
+      type: object
+      required: [prompt, creditsUsed, websiteChecked, remainingCredits]
+      properties:
+        prompt: { type: string }
+        creditsUsed: { type: integer }
+        websiteChecked: { type: boolean }
+        websiteTitle: { type: string }
+        remainingCredits: { type: integer }
+    PromptStudioAuthor:
+      type: object
+      required: [publicId, displayName, avatarId]
+      properties:
+        publicId: { type: string }
+        displayName: { type: string }
+        avatarId: { type: string }
+    PromptStudioPromptSummary:
+      type: object
+      required: [id, title, description, promptText, category, author, imageCount, commentCount, averageRating, ratingCount, featured, createdAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        promptText: { type: string }
+        category: { type: string }
+        coverImageUrl: { type: ["string", "null"] }
+        author: { $ref: "#/components/schemas/PromptStudioAuthor" }
+        imageCount: { type: integer }
+        commentCount: { type: integer }
+        averageRating: { type: number }
+        ratingCount: { type: integer }
+        featured: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    PromptStudioList:
+      type: object
+      required: [prompts, total]
+      properties:
+        prompts: { type: array, items: { $ref: "#/components/schemas/PromptStudioPromptSummary" } }
+        total: { type: integer }
+    PromptStudioUnlockInput:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [copy, use] }
+    PromptStudioUnlockResponse:
+      type: object
+      required: [promptText, creditsUsed, remainingFreeUses]
+      properties:
+        promptText: { type: string }
+        creditsUsed: { type: integer }
+        remainingFreeUses: { type: ["integer", "null"], description: Null for paid accounts without a free-use cap }
+    PromptStudioPromptInput:
+      type: object
+      required: [title, promptText, category]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 140 }
+        description: { type: string, maxLength: 1000 }
+        promptText: { type: string, minLength: 3, maxLength: 3000 }
+        category: { type: string, enum: [realistic, cartoon, cinematic, modeling, disney, games, thumbnails, made-by-fezi] }
+    ImageToPromptInput:
+      type: object
+      required: [agentId, imageBase64, mimeType, analysisLanguage]
+      properties:
+        agentId: { type: string, minLength: 1 }
+        imageBase64: { type: string, minLength: 1 }
+        mimeType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        analysisLanguage: { type: string, enum: [en, fa] }
+    ImagePromptPackage:
+      type: object
+      required: [visualAnalysis, mainPrompt, negativePrompt, recommendedSettings, photorealistic, cinematic, artisticEditorial]
+      properties:
+        visualAnalysis: { type: string }
+        mainPrompt: { type: string }
+        negativePrompt: { type: string }
+        recommendedSettings: { type: string }
+        photorealistic: { type: string }
+        cinematic: { type: string }
+        artisticEditorial: { type: string }
+    ImageToPromptResponse:
+      type: object
+      required: [promptPackage, creditsUsed, route]
+      properties:
+        promptPackage: { $ref: "#/components/schemas/ImagePromptPackage" }
+        creditsUsed: { type: integer }
+        route: { type: string }
+    PromptStudioPromptResponse:
+      type: object
+      required: [prompt]
+      properties: { prompt: { $ref: "#/components/schemas/PromptStudioPromptSummary" } }
+    PromptStudioDetailResponse:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          allOf:
+            - $ref: "#/components/schemas/PromptStudioPromptSummary"
+            - type: object
+              required: [images, comments, viewerOwns, viewerRating]
+              properties:
+                viewerOwns: { type: boolean }
+                viewerRating: { type: ["integer", "null"], minimum: 1, maximum: 5 }
+                images:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, url, author, createdAt]
+                    properties:
+                      id: { type: string }
+                      url: { type: string }
+                      author: { $ref: "#/components/schemas/PromptStudioAuthor" }
+                      createdAt: { type: string, format: date-time }
+                comments:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, body, author, createdAt, canDelete]
+                    properties:
+                      id: { type: string }
+                      body: { type: string }
+                      author: { $ref: "#/components/schemas/PromptStudioAuthor" }
+                      createdAt: { type: string, format: date-time }
+                      canDelete: { type: boolean }
+    PromptStudioCommentInput:
+      type: object
+      required: [body]
+      properties: { body: { type: string, minLength: 1, maxLength: 1000 } }
+    PromptStudioRatingInput:
+      type: object
+      required: [rating]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+    PromptStudioRatingResponse:
+      type: object
+      required: [rating, averageRating, ratingCount]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        averageRating: { type: number }
+        ratingCount: { type: integer }
+    PromptStudioProfileResponse:
+      type: object
+      required: [profile, prompts]
+      properties:
+        profile: { $ref: "#/components/schemas/PromptStudioAuthor" }
+        prompts: { type: array, items: { $ref: "#/components/schemas/PromptStudioPromptSummary" } }
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Agent:
+      type: object
+      required: [id, name, title, specialty, description, status, accent, capabilities, capabilityDetails, personality, socialLinks]
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        title: { type: string }
+        specialty: { type: string }
+        description: { type: string }
+        status: { type: string }
+        accent: { type: string }
+        capabilities:
+          type: array
+          items: { type: string }
+        capabilityDetails:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityDetail"
+        model: { type: string }
+        connectedModels:
+          type: array
+          items: { type: string }
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLink"
+        personality:
+          $ref: "#/components/schemas/Personality"
+    SocialLink:
+      type: object
+      required: [platform, label, url]
+      properties:
+        platform:
+          type: string
+          enum: [instagram, threads, facebook, x, tiktok, linkedin, website, other]
+        label: { type: string, minLength: 1, maxLength: 80 }
+        url: { type: string, format: uri, maxLength: 1000 }
+    CapabilityDetail:
+      type: object
+      required: [id, en, fa, category, description, tier, mode, tools]
+      properties:
+        id: { type: string }
+        en: { type: string }
+        fa: { type: string }
+        category: { type: string }
+        description: { type: string }
+        tier: { type: string }
+        mode: { type: string }
+        tools:
+          type: array
+          items: { type: string }
+    Personality:
+      type: object
+      required: [keywords, roleEn, roleFa, philosophyEn, philosophyFa, relationshipEn, relationshipFa, weakness, energy, humor, warmth, mystery, seriousness, leadership, playfulness, creativity, precision, businessFocus]
+      properties:
+        keywords:
+          type: array
+          items: { type: string }
+        roleEn: { type: string }
+        roleFa: { type: string }
+        philosophyEn: { type: string }
+        philosophyFa: { type: string }
+        relationshipEn:
+          type: array
+          items: { type: string }
+        relationshipFa:
+          type: array
+          items: { type: string }
+        weakness: { type: string }
+        energy: { type: integer }
+        humor: { type: integer }
+        warmth: { type: integer }
+        mystery: { type: integer }
+        seriousness: { type: integer }
+        leadership: { type: integer }
+        playfulness: { type: integer }
+        creativity: { type: integer }
+        precision: { type: integer }
+        businessFocus: { type: integer }
+    Dashboard:
+      type: object
+      required: [plan, credits, creditsLimit, chats, projects, usagePercent, guardianStatus, recentActivity]
+      properties:
+        plan: { type: string }
+        credits: { type: integer }
+        creditsLimit: { type: integer }
+        chats: { type: integer }
+        projects: { type: integer }
+        usagePercent: { type: integer }
+        guardianStatus: { type: string }
+        recentActivity:
+          type: array
+          items: { $ref: "#/components/schemas/Activity" }
+    Activity:
+      type: object
+      required: [id, label, detail, time, tone]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        detail: { type: string }
+        time: { type: string }
+        tone: { type: string }
+    ChatInput:
+      type: object
+      required: [agentId, message]
+      properties:
+        agentId: { type: string, minLength: 1 }
+        source: { type: string, enum: [studio] }
+        appId: { type: string, enum: [claude, deepseek, gapgpt, openai, mistral] }
+        message: { type: string, minLength: 1 }
+        conversationId: { type: ["string", "null"] }
+        displayMessage: { type: string, minLength: 1, maxLength: 12000 }
+        attachments:
+          type: array
+          items: { type: string, maxLength: 255 }
+          maxItems: 20
+        model: { type: string, minLength: 1, maxLength: 160 }
+    ChatResponse:
+      type: object
+      required: [id, messageId, agentId, message, creditsUsed, handoff, conversationId]
+      properties:
+        id: { type: string }
+        messageId: { type: string }
+        agentId: { type: string }
+        appId: { type: string, enum: [claude, deepseek, gapgpt, openai, mistral] }
+        model: { type: string }
+        message: { type: string }
+        creditsUsed: { type: integer }
+        conversationId: { type: string }
+        media: { $ref: "#/components/schemas/ChatMedia" }
+        handoff:
+          type: array
+          items: { $ref: "#/components/schemas/Handoff" }
+    ChatMedia:
+      type: object
+      required: [type, url, mimeType, model, isPreview, prompt]
+      properties:
+        type: { type: string, enum: [image, video] }
+        url: { type: string }
+        mimeType: { type: string }
+        model: { type: string }
+        isPreview: { type: boolean }
+        prompt: { type: string }
+    ChatConversationInput:
+      type: object
+      required: [agentId]
+      properties:
+        agentId: { type: string, minLength: 1 }
+        appId: { type: string, enum: [claude, deepseek, gapgpt, openai, mistral] }
+    ChatHistory:
+      type: object
+      required: [conversationId, agentId, messages]
+      properties:
+        conversationId: { type: [string, "null"] }
+        agentId: { type: string }
+        appId: { type: string, enum: [claude, deepseek, gapgpt, openai, mistral] }
+        model: { type: string }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/ChatMessage" }
+    ChatConversationSummary:
+      type: object
+      required: [id, agentId, title, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        agentId: { type: string }
+        appId: { type: string, enum: [claude, deepseek, gapgpt, openai, mistral] }
+        title: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ChatConversationsResponse:
+      type: object
+      required: [conversations]
+      properties:
+        conversations:
+          type: array
+          items: { $ref: "#/components/schemas/ChatConversationSummary" }
+    ConversationRename:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+    Project:
+      type: object
+      required: [id, name, description, status, createdAt, updatedAt, conversationIds, agentIds]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [active, archived, completed] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        conversationIds:
+          type: array
+          items: { type: string }
+        agentIds:
+          type: array
+          items: { type: string }
+    ProjectInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 2000 }
+        status: { type: string, enum: [active, archived, completed] }
+    ProjectUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 2000 }
+        status: { type: string, enum: [active, archived, completed] }
+        conversationIds:
+          type: array
+          items: { type: string }
+        agentIds:
+          type: array
+          items: { type: string }
+    ChatMessage:
+      type: object
+      required: [id, conversationId, agentId, role, text, createdAt]
+      properties:
+        id: { type: string }
+        conversationId: { type: string }
+        agentId: { type: string }
+        role: { type: string, enum: [user, agent] }
+        text: { type: string }
+        credits: { type: integer }
+        model: { type: string }
+        media: { $ref: "#/components/schemas/ChatMedia" }
+        attachments:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+    SpeechInput:
+      type: object
+      required: [agentId, text]
+      properties:
+        agentId: { type: string, minLength: 1 }
+        text: { type: string, minLength: 1, maxLength: 2000 }
+    SpeechAudio:
+      type: object
+      required: [audioBase64, audioFormat, billableCharacters]
+      properties:
+        audioBase64: { type: string }
+        audioFormat: { type: string }
+        billableCharacters: { type: integer }
+    VoiceInput:
+      type: object
+      required: [audioBase64, mimeType]
+      properties:
+        audioBase64: { type: string, minLength: 1, maxLength: 15000000 }
+        mimeType: { type: string, minLength: 1, maxLength: 100 }
+    VoiceTranscription:
+      type: object
+      required: [text, language, provider, creditsUsed]
+      properties:
+        text: { type: string }
+        language: { type: string }
+        provider: { type: string }
+        creditsUsed: { type: integer, minimum: 0 }
+    Handoff:
+      type: object
+      required: [agentId, status, summary]
+      properties:
+        agentId: { type: string }
+        status: { type: string }
+        summary: { type: string }
+    Plan:
+      type: object
+      required: [id, name, nameFa, price, cadence, credits, description, featured, appIds, modelIds, agentIds, customAgentLimit, featureDetails, creditPolicy]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        nameFa: { type: string }
+        price: { type: number }
+        cadence: { type: string }
+        credits: { type: integer }
+        description: { type: string }
+        featured: { type: boolean }
+        appIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [claude, deepseek, gapgpt, openai, mistral, image, code, research, voice]
+        modelIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [openrouter/free, deepseek-chat, gapgpt-qwen-3.6, gpt-5.6-luna, gpt-5.6-sol, gapgpt-gemma-26b-a4b, gapgpt/z-image]
+        agentIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [monicah, arta, arvin, negar, fezi]
+        customAgentLimit: { type: integer }
+        featureDetails:
+          type: array
+          items: { type: string }
+        creditPolicy:
+          type: object
+          required: [grantTrigger, activePaidPlanBalance, noActivePaidPlanBalance, automaticRefresh]
+          properties:
+            grantTrigger:
+              type: string
+              enum: [payment_approval]
+            activePaidPlanBalance:
+              type: string
+              enum: [add]
+            noActivePaidPlanBalance:
+              type: string
+              enum: [replace]
+            automaticRefresh:
+              type: boolean
+              enum: [false]
+    PaymentCurrency:
+      type: object
+      required: [id, label, ticker, network, address, logoKey, enabled]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        ticker: { type: string }
+        network: { type: string }
+        address: { type: string }
+        logoKey: { type: string }
+        enabled: { type: boolean }
+    PaymentQuoteInput:
+      type: object
+      required: [planId, currency]
+      properties:
+        planId: { type: string }
+        currency: { type: string }
+    PaymentQuote:
+      type: object
+      required: [planId, currency, network, amount, address, expiresInMinutes, warning]
+      properties:
+        planId: { type: string }
+        currency: { type: string }
+        network: { type: string }
+        amount: { type: string }
+        address: { type: string }
+        expiresInMinutes: { type: integer }
+        warning: { type: string }
+    ConnectorCatalogItem:
+      type: object
+      required: [id, name, description, kind, authType, status, capabilities]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        kind: { type: string }
+        authType: { type: string }
+        status: { type: string }
+        capabilities:
+          type: array
+          items: { type: string }
+        docsUrl: { type: string }
+    ConnectorTool:
+      type: object
+      required: [name, description]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        inputSchema:
+          type: object
+          additionalProperties: true
+    ConnectorConnection:
+      type: object
+      required: [id, connectorId, name, status, authType, capabilities, tools, grantedAgentIds, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        connectorId: { type: string }
+        name: { type: string }
+        endpoint: { type: string }
+        status: { type: string }
+        authType: { type: string }
+        capabilities:
+          type: array
+          items: { type: string }
+        tools:
+          type: array
+          items: { $ref: "#/components/schemas/ConnectorTool" }
+        grantedAgentIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        lastError: { type: string }
+    ConnectorsResponse:
+      type: object
+      required: [catalog, connections, protocols]
+      properties:
+        catalog:
+          type: array
+          items: { $ref: "#/components/schemas/ConnectorCatalogItem" }
+        connections:
+          type: array
+          items: { $ref: "#/components/schemas/ConnectorConnection" }
+        protocols:
+          type: object
+          required: [agentApi, mcp]
+          properties:
+            agentApi:
+              type: object
+              required: [endpoint, authentication]
+              properties:
+                endpoint: { type: string }
+                authentication: { type: string }
+            mcp:
+              type: object
+              required: [endpoint, authentication, transport]
+              properties:
+                endpoint: { type: string }
+                authentication: { type: string }
+                transport: { type: string }
+    CreateConnectorInput:
+      type: object
+      required: [connectorId, name, endpoint]
+      properties:
+        connectorId: { type: string, enum: [custom-mcp] }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        endpoint: { type: string, format: uri }
+    ConnectorPermissionsInput:
+      type: object
+      required: [agentIds]
+      properties:
+        agentIds:
+          type: array
+          items: { type: string }
+          maxItems: 10
+    AuthorizationResponse:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+        redirectUrl: { type: string }
+        message: { type: string }
+    CustomAgent:
+      type: object
+      required: [id, name, slug, description, gender, category, tags, capabilities, tools, socialLinks, visibility, status, apiEnabled, memoryEnabled, usageCount]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        gender: { type: string }
+        avatarUrl: { type: [string, "null"] }
+        coverUrl: { type: [string, "null"] }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        capabilities:
+          type: array
+          items: { type: string }
+        tools:
+          type: array
+          items: { type: string }
+        socialLinks:
+          type: array
+          maxItems: 12
+          items:
+            $ref: "#/components/schemas/SocialLink"
+        visibility: { type: string, enum: [private, unlisted, public] }
+        status: { type: string, enum: [draft, active, paused, archived] }
+        apiEnabled: { type: boolean }
+        memoryEnabled: { type: boolean }
+        usageCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CustomAgentInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        slug: { type: string, maxLength: 80 }
+        description: { type: string, maxLength: 500 }
+        gender: { type: string, maxLength: 30 }
+        avatarUrl: { type: [string, "null"], maxLength: 1000 }
+        coverUrl: { type: [string, "null"], maxLength: 1000 }
+        category: { type: string, maxLength: 60 }
+        tags:
+          type: array
+          maxItems: 12
+          items: { type: string, maxLength: 80 }
+        personality:
+          type: object
+          additionalProperties: true
+        systemInstructions: { type: string, maxLength: 12000 }
+        developerInstructions: { type: string, maxLength: 12000 }
+        capabilities:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 80 }
+        tools:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 80 }
+        socialLinks:
+          type: array
+          maxItems: 12
+          items:
+            $ref: "#/components/schemas/SocialLink"
+        connectedModels:
+          type: array
+          maxItems: 12
+          items: { type: string, maxLength: 120 }
+        knowledgeText: { type: string, maxLength: 100000 }
+        memoryEnabled: { type: boolean }
+        apiEnabled: { type: boolean }
+        visibility: { type: string, enum: [private, unlisted, public] }
+        status: { type: string, enum: [draft, active, paused, archived] }
+        model: { type: string, maxLength: 120 }
+    CustomAgentPurposeAnalysisInput:
+      type: object
+      required: [prompt]
+      properties:
+        prompt: { type: string, minLength: 8, maxLength: 8000 }
+    CustomAgentApiChatInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1, maxLength: 12000 }
+    CustomAgentsResponse:
+      type: object
+      required: [agents, limit, used]
+      properties:
+        agents:
+          type: array
+          items: { $ref: "#/components/schemas/CustomAgent" }
+        limit: { type: integer }
+        used: { type: integer }
+    CustomAgentApiKey:
+      type: object
+      required: [id, name, lastFour, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        lastFour: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, "null"], format: date-time }
+        revokedAt: { type: [string, "null"], format: date-time }
+    ExternalChatInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1, maxLength: 12000 }
+        conversationId: { type: string }
+    McpRequest:
+      type: object
+      required: [jsonrpc, method]
+      properties:
+        jsonrpc: { type: string, const: "2.0" }
+        id: { oneOf: [{ type: string }, { type: number }, { type: "null" }] }
+        method: { type: string }
+        params:
+          type: object
+          additionalProperties: true
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: FEZI API key
+

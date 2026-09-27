@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "FEZI AI"
+description = "A professional AI Universe workspace with five specialized agents, an interactive chat hub, plan and credit controls, crypto payment flows, and an admin-ready operations view."
+version = "1.0.0"
+id = "artifacts/fezi-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20480
+
+[services.development]
+run = "pnpm --filter @workspace/fezi-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/fezi-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/fezi-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20480"
+BASE_PATH = "/"

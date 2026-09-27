@@ -1,0 +1,45 @@
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+packages = ["openssl", "p7zip", "ffmpeg"]
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 20480
+externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+ADMIN_USERNAME = "Fezi"
+ADMIN_ALERT_FROM_EMAIL = "Persian Dark Horse Support <Support@persiandarkhorse.com>"
+ADMIN_ALERT_TO_EMAIL = "fazelahandan@gmail.com"
+TRANSACTIONAL_FROM_EMAIL = "Persian Dark Horse Support <Support@persiandarkhorse.com>"
+TRANSACTIONAL_REPLY_TO_EMAIL = "PersianDarkHorsesup@gmail.com"

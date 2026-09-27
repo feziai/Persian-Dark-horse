@@ -1,0 +1,572 @@
+openapi: 3.1.0
+info:
+  title: Community
+  version: 1.0.0
+paths:
+  /community/posts:
+    get:
+      operationId: listCommunityPosts
+      tags: [community]
+      parameters:
+        - {name: tab, in: query, schema: {type: string, enum: [all, following, news]}}
+        - {name: authorId, in: query, schema: {type: string}}
+        - {name: parentId, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 30, default: 30}}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200':
+          description: Bounded newest-first feed; replies only with parentId; both-direction block filtering.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [posts, nextCursor]
+                properties:
+                  posts: {type: array, items: {$ref: '#/components/schemas/CommunityPost'}}
+                  nextCursor: {type: [string, 'null']}
+    post:
+      operationId: createCommunityPost
+      tags: [community]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityCreatePostInput'}
+      responses:
+        '201': {$ref: '#/components/responses/Post'}
+  /community/posts/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      operationId: getCommunityPost
+      responses:
+        '200': {$ref: '#/components/responses/Post'}
+    patch:
+      operationId: editCommunityPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityTextInput'}
+      responses:
+        '200': {$ref: '#/components/responses/Post'}
+    delete:
+      operationId: deleteCommunityPost
+      responses:
+        '204': {description: Deleted with attached media}
+  /community/posts/{id}/like:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put:
+      operationId: likeCommunityPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityLikeInput'}
+      responses:
+        '200':
+          description: Idempotent like
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [liked, likeCount]
+                properties:
+                  liked: {type: boolean}
+                  likeCount: {type: integer}
+  /community/uploads:
+    post:
+      operationId: uploadCommunityMedia
+      description: Verified primary email. Raw JPEG/PNG/WebP or MP4, at most 6250000 bytes. Images decoded and re-encoded; SVG rejected.
+      requestBody:
+        required: true
+        content:
+          image/jpeg: {schema: {type: string, format: binary}}
+          image/png: {schema: {type: string, format: binary}}
+          image/webp: {schema: {type: string, format: binary}}
+          video/mp4: {schema: {type: string, format: binary}}
+      responses:
+        '201': {$ref: '#/components/responses/Media'}
+  /community/profiles/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      operationId: getCommunityProfile
+      responses:
+        '200':
+          description: Public fields and intentionally public creations only; me resolves signed-in identity.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [profile, creations]
+                properties:
+                  profile: {$ref: '#/components/schemas/CommunityProfile'}
+                  creations:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, url]
+                      properties:
+                        id: {type: string}
+                        name: {type: string}
+                        url: {type: string}
+                        imageUrl: {type: string}
+  /community/profile:
+    patch:
+      operationId: updateCommunityProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityProfileInput'}
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [profile]
+                properties:
+                  profile: {$ref: '#/components/schemas/CommunityProfile'}
+  /community/profiles/{id}/follow:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put:
+      operationId: followCommunityProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityFollowInput'}
+      responses:
+        '200':
+          description: Following state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CommunityFollowInput'}
+  /community/profiles/{id}/block:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put:
+      operationId: blockCommunityProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityBlockInput'}
+      responses:
+        '200':
+          description: Blocking state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CommunityBlockInput'}
+  /community/reports:
+    post:
+      operationId: reportCommunityContent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityReportInput'}
+      responses:
+        '201':
+          description: Report persisted
+          content:
+            application/json:
+              schema: {type: object, required: [id], properties: {id: {type: string}}}
+  /community/notifications:
+    get:
+      operationId: listCommunityNotifications
+      responses:
+        '200':
+          description: Owner notifications, bounded to latest 100
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notifications, unreadCount]
+                properties:
+                  notifications: {type: array, items: {$ref: '#/components/schemas/CommunityNotification'}}
+                  unreadCount: {type: integer}
+  /community/notifications/read:
+    post:
+      operationId: readCommunityNotifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityReadInput'}
+      responses:
+        '200': {$ref: '#/components/responses/Ok'}
+  /community/conversations:
+    get:
+      operationId: listCommunityConversations
+      responses:
+        '200':
+          description: Participant-only conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversations]
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      type: object
+                      required: [peer, lastMessage, updatedAt, unreadCount]
+                      properties:
+                        peer: {$ref: '#/components/schemas/CommunityProfile'}
+                        lastMessage: {type: string}
+                        updatedAt: {type: string, format: date-time}
+                        unreadCount: {type: integer}
+  /community/messages/{userId}:
+    parameters:
+      - {name: userId, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: listCommunityMessages
+      parameters:
+        - {name: cursor, in: query, schema: {$ref: '#/components/schemas/CommunityMessageCursor'}}
+      responses:
+        '200':
+          description: Participant-only paged messages, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages, nextCursor]
+                properties:
+                  messages: {type: array, items: {$ref: '#/components/schemas/CommunityMessage'}}
+                  nextCursor: {type: [string, 'null']}
+    post:
+      operationId: sendCommunityMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityTextInput'}
+      responses:
+        '201':
+          description: Message persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: {$ref: '#/components/schemas/CommunityMessage'}
+  /community/banners:
+    get:
+      operationId: listCommunityBanners
+      responses:
+        '200': {$ref: '#/components/responses/Banners'}
+  /community/visit:
+    post:
+      operationId: recordCommunityVisit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityVisitInput'}
+      responses:
+        '204': {description: Anonymous presence updated; heartbeat does not recount visit}
+  /community/data:
+    get:
+      operationId: exportCommunityData
+      responses:
+        '200':
+          description: Owner data export
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+    delete:
+      operationId: eraseCommunityData
+      responses:
+        '204': {description: Owner community data and stored media deleted}
+  /admin/community:
+    get:
+      operationId: getCommunityAdmin
+      responses:
+        '200':
+          description: Independent HttpOnly admin session required
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reports, banners, news, newsStatus]
+                properties:
+                  reports:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, reason, status, createdAt]
+                      properties:
+                        id: {type: string}
+                        reason: {type: string}
+                        status: {type: string}
+                        postId: {type: [string, 'null']}
+                        userId: {type: [string, 'null']}
+                        createdAt: {type: string, format: date-time}
+                  banners: {type: array, items: {$ref: '#/components/schemas/CommunityBanner'}}
+                  news: {type: array, items: {$ref: '#/components/schemas/CommunityPost'}}
+                  newsStatus:
+                    type: object
+                    required: [configured, lastRun, error]
+                    properties:
+                      configured: {type: boolean}
+                      lastRun: {type: [string, 'null'], format: date-time}
+                      error: {type: [string, 'null']}
+  /admin/community/banners:
+    put:
+      operationId: saveCommunityBanners
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityBannersInput'}
+      responses:
+        '200': {$ref: '#/components/responses/Banners'}
+  /admin/community/uploads:
+    post:
+      operationId: uploadCommunityAdminMedia
+      requestBody:
+        required: true
+        content:
+          image/jpeg: {schema: {type: string, format: binary}}
+          image/png: {schema: {type: string, format: binary}}
+          image/webp: {schema: {type: string, format: binary}}
+      responses:
+        '201': {$ref: '#/components/responses/Media'}
+  /admin/community/news:
+    post:
+      operationId: publishCommunityNews
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityNewsInput'}
+      responses:
+        '201': {$ref: '#/components/responses/Post'}
+  /admin/community/reports/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    patch:
+      operationId: moderateCommunityReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityModerationInput'}
+      responses:
+        '200': {$ref: '#/components/responses/Ok'}
+  /admin/community/posts/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    delete:
+      operationId: moderateCommunityPost
+      responses:
+        '204': {description: Post and media removed}
+  /admin/community/analytics:
+    get:
+      operationId: getCommunityAnalytics
+      parameters:
+        - {name: period, in: query, schema: {type: string, enum: [day, week, month]}}
+      responses:
+        '200':
+          description: Privacy-minimized aggregate visits and two-minute presence
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [online, visits, series]
+                properties:
+                  online: {type: integer}
+                  visits: {type: integer}
+                  series:
+                    type: array
+                    items:
+                      type: object
+                      required: [label, visits]
+                      properties:
+                        label: {type: string}
+                        visits: {type: integer}
+  /admin/community/news/sync:
+    post:
+      operationId: syncCommunityNews
+      responses:
+        '200':
+          description: At most one article per thirty minutes, including manual sync
+          content:
+            application/json:
+              schema: {type: object, required: [published], properties: {published: {type: integer}}}
+        '503': {description: GNEWS_API_KEY missing}
+components:
+  parameters:
+    Id: {name: id, in: path, required: true, schema: {type: string}}
+    Cursor: {name: cursor, in: query, schema: {type: string, maxLength: 300}}
+  responses:
+    Post:
+      description: Community post
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [post]
+            properties:
+              post: {$ref: '#/components/schemas/CommunityPost'}
+    Media:
+      description: Persisted owner-associated upload
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [media]
+            properties:
+              media: {$ref: '#/components/schemas/CommunityMedia'}
+    Banners:
+      description: Ordered banners
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/CommunityBannersInput'}
+    Ok:
+      description: Success
+      content:
+        application/json:
+          schema: {type: object, required: [ok], properties: {ok: {type: boolean}}}
+  schemas:
+    CommunityMessageCursor:
+      type: string
+      maxLength: 300
+    CommunityProfile:
+      type: object
+      required: [id, name, avatarUrl, bio, links, verified, followerCount, followingCount, isFollowing, isBlocked]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        avatarUrl: {type: [string, 'null']}
+        bio: {type: string}
+        links: {type: array, items: {type: string}}
+        verified: {type: boolean, description: Server-owned active paid subscription entitlement}
+        followerCount: {type: integer}
+        followingCount: {type: integer}
+        isFollowing: {type: boolean}
+        isBlocked: {type: boolean}
+    CommunityMedia:
+      type: object
+      required: [id, url, kind]
+      properties:
+        id: {type: string}
+        url: {type: string}
+        kind: {type: string, enum: [image, video]}
+    CommunityPost:
+      type: object
+      required: [id, author, text, media, kind, parentId, createdAt, likeCount, replyCount, liked]
+      properties:
+        id: {type: string}
+        author: {$ref: '#/components/schemas/CommunityProfile'}
+        text: {type: string}
+        media: {type: array, items: {$ref: '#/components/schemas/CommunityMedia'}}
+        kind: {type: string, enum: [post, news]}
+        parentId: {type: [string, 'null']}
+        createdAt: {type: string, format: date-time}
+        likeCount: {type: integer}
+        replyCount: {type: integer}
+        liked: {type: boolean}
+        sourceUrl: {type: [string, 'null']}
+        title: {type: [string, 'null']}
+    CommunityNotification:
+      type: object
+      required: [id, type, text, href, read, createdAt]
+      properties:
+        id: {type: string}
+        type: {type: string, enum: [like, reply, follow, message, news]}
+        text: {type: string}
+        href: {type: string}
+        read: {type: boolean}
+        createdAt: {type: string, format: date-time}
+    CommunityMessage:
+      type: object
+      required: [id, senderId, text, createdAt]
+      properties:
+        id: {type: string}
+        senderId: {type: string}
+        text: {type: string}
+        createdAt: {type: string, format: date-time}
+    CommunityBanner:
+      type: object
+      required: [id, title, text, imageUrl, buttonLabel, buttonHref, enabled, sortOrder]
+      properties:
+        id: {type: string}
+        title: {type: string}
+        text: {type: string}
+        imageUrl: {type: string}
+        buttonLabel: {type: string}
+        buttonHref: {type: string}
+        enabled: {type: boolean}
+        sortOrder: {type: integer}
+    CommunityCreatePostInput:
+      type: object
+      required: [text, mediaIds]
+      properties:
+        text: {type: string, maxLength: 5000}
+        mediaIds: {type: array, maxItems: 5, uniqueItems: true, items: {type: string}}
+        parentId: {type: string}
+    CommunityTextInput:
+      type: object
+      required: [text]
+      properties:
+        text: {type: string, maxLength: 5000}
+    CommunityLikeInput:
+      type: object
+      required: [liked]
+      properties:
+        liked: {type: boolean}
+    CommunityFollowInput:
+      type: object
+      required: [following]
+      properties:
+        following: {type: boolean}
+    CommunityBlockInput:
+      type: object
+      required: [blocked]
+      properties:
+        blocked: {type: boolean}
+    CommunityProfileInput:
+      type: object
+      required: [bio, links]
+      properties:
+        bio: {type: string, maxLength: 500}
+        links: {type: array, maxItems: 5, items: {type: string, format: uri}}
+    CommunityReportInput:
+      type: object
+      required: [reason]
+      description: Exactly one of postId or userId
+      properties:
+        postId: {type: string}
+        userId: {type: string}
+        reason: {type: string, minLength: 5, maxLength: 2000}
+    CommunityReadInput:
+      type: object
+      properties:
+        ids: {type: array, maxItems: 100, items: {type: string}}
+    CommunityVisitInput:
+      type: object
+      required: [visitorId, path]
+      properties:
+        visitorId: {type: string, format: uuid}
+        path: {type: string, maxLength: 300}
+    CommunityBannersInput:
+      type: object
+      required: [banners]
+      properties:
+        banners: {type: array, maxItems: 20, items: {$ref: '#/components/schemas/CommunityBanner'}}
+    CommunityNewsInput:
+      type: object
+      required: [title, text, mediaIds]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
+        text: {type: string, minLength: 1, maxLength: 5000}
+        mediaIds: {type: array, maxItems: 5, items: {type: string}}
+        sourceUrl: {type: string, format: uri}
+    CommunityModerationInput:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, enum: [resolved, dismissed]}
+        removePost: {type: boolean}
